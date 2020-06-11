@@ -51,15 +51,31 @@ module.exports={
     userlogin:(req, res)=>{
         const {username, password}=req.query
         const hashpass = encrypt(password)
-        var sql=`select * from users where username = '${username}' and password = '${hashpass}'`
+        var sql=`select * from users where (username = '${username}' or email = '${username}') and password = '${hashpass}'`
         db.query(sql, (err,result)=>{
             if(err) return res.status(500).send(err)
             if(result.length) {
-                console.log(result[0].iduser)                         //jika user ada
-                const token=createJWTToken({id:result[0].iduser, username:result[0].username})    //buat token
-                return res.status(200).send({...result[0], token:token, status:true})    //kirim result dari database beserta token ke front-end berupa objek
+                console.log(result)
+                var data = {
+                    lastlogin: new Date()            
+                }
+                sql = `update users set ? where iduser=${result[0].iduser}`
+                db.query(sql, data, (err2, res2)=>{
+                    if(err) return res.status(500).send(err)
+                    console.log(result[0].iduser)                         //jika user ada
+                    const token=createJWTToken({id:result[0].iduser, username:result[0].username})    //buat token
+                    return res.status(200).send({...result[0], token:token, status:true})    //kirim result dari database beserta token ke front-end berupa objek
+                })
             }else{
-                return res.status(200).send({status : false})
+                sql=`select * from users where username = '${username}' or email = '${username}'`
+                db.query(sql, (err3, res3)=>{
+                    if(err) return res.status(500).send(err)
+                    if(res3.length) {
+                        return res.status(200).send({status : false, message : 'passsword salah'})
+                    }else{
+                        return res.status(200).send({status : false, message : 'username / email salah'})
+                    }
+                })
             }
         })
 
